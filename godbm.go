@@ -4,7 +4,7 @@
 
 /*
 The godbm package provides a native DBM like database similar to Berkley DB,
-QDBM or Kyoto Cabinet.
+QDBM, Tokyo Cabinet or Kyoto Cabinet.
 
 This lightweight embedded database can only used by one process at a time, but
 that's not a problem because Go programs are quite good a concurrency and if
@@ -27,9 +27,11 @@ package godbm
 import (
 	"os"
 	"encoding/binary"
-	"crypto/md5"
+	"hash/fnv"
 	"sync"
 	"bytes"
+	"fmt"
+	"errors"
 )
 
 // The HashDB provides a persistent hash table with the usual O(1)
@@ -51,7 +53,12 @@ type record struct {
 // Create a new hash database with 2^nbuckets available slots
 func Create(path string, nbuckets uint32) (db *HashDB, err error) {
 	var file *os.File
-	// TODO(tux21b): Do not overwrite existing files.
+	// DONE! TODO(tux21b): Do not overwrite existing files.
+	if finfo,x := os.Stat(path); x==nil {// no error means, it exists
+		err = errors.New(fmt.Sprint("Do not overwrite existing files. ",
+			finfo.Mode()," ",finfo.Name()," ",finfo.Size() ))
+		return
+	}
 	if file, err = os.Create(path); err != nil {
 		return
 	}
@@ -64,18 +71,55 @@ func Create(path string, nbuckets uint32) (db *HashDB, err error) {
 	return
 }
 
-// TODO(tux21b): Add a Open() function
+// Opend a hash database
+func Open(path string) (db *HashDB, err error) {
+	var file *os.File
+	if file, err = os.OpenFile(path,os.O_RDWR,0666); err != nil {
+		return
+	}
+	db = &HashDB{
+		file:     file,
+	}
+	err = db.readBuckets()
+	return
+}
+
+// Opend a hash database (Readonly)
+func Read(path string) (db *HashDB, err error) {
+	var file *os.File
+	if file, err = os.Open(path); err != nil {
+		return
+	}
+	db = &HashDB{
+		file:     file,
+	}
+	err = db.readBuckets()
+	return
+}
 
 // Write the bucket array to the file
 func (db *HashDB) writeBuckets() {
 	// TODO(tux21b): Consider using mmap for the bucket array
+	// mmap(1) not existent in go!!!
 	db.file.Seek(0, 0)
 	binary.Write(db.file, binary.BigEndian, db.nbuckets)
 	binary.Write(db.file, binary.BigEndian, db.buckets)
 }
 
+// Write the bucket array to the file
+func (db *HashDB) readBuckets() (err error){
+	// TODO(tux21b): Consider using mmap for the bucket array
+	db.file.Seek(0, 0)
+	err = binary.Read(db.file, binary.BigEndian, &db.nbuckets)
+	if err!=nil {return}
+	db.buckets = make([]uint64, 1<<db.nbuckets)
+	err = binary.Read(db.file, binary.BigEndian, db.buckets)
+	return
+}
+
 // Store a (key, value) pair in the database
 func (db *HashDB) Set(key, value []byte) (err error) {
+	// TODO(maxymania): Overwrite existing records
 	// TODO(tux21b): Locks should only affect single records, not the file
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -158,8 +202,8 @@ func (db *HashDB) Get(key []byte) (value []byte, err error) {
 // Calculate the bucket ID for a given key. This ID is always between 0
 // and 2^nbuckets - 1 inclusive.
 func (db *HashDB) bucket(key []byte) (bucket_id uint64) {
-	// TODO(tux21b): Consider using a faster, non-secure hash here (MurMur?)
-	hash := md5.New()
+	// DONE! TODO(tux21b): Consider using a faster, non-secure hash here (MurMur?)
+	hash := fnv.New64()
 	hash.Write(key)
 	sum := hash.Sum([]byte{})
 	for i := uint(0); i < 8; i++ {
