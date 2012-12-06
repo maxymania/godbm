@@ -140,7 +140,25 @@ func (db *HashDB) Set(key, value []byte) (err error) {
 		}
 		switch {
 		case cmp == 0:
-			// TODO(tux21b): Updates
+			// TODO(maxymania): Redundant code isn't good: uint32(28 + len(key) + len(value))
+			
+			// Appending if not enough Space
+			if other.size<uint32(28 + len(key) + len(value)) {
+				other.value  = value
+				other.offset = uint64(offset)
+				other.size   = nextPowerTwo(uint32(28 + len(key) + len(value)))
+				x := db.writeRecord(other)
+				if x!=nil { return x }
+				db.buckets[bucket_id] = uint64(offset)
+				db.writeBuckets()
+				db.file.Sync()
+				return nil
+			} else {
+				other.value=value
+				x := db.writeRecord(other)
+				db.file.Sync()
+				return x
+			}
 		case cmp < 0:
 			other.left = uint64(offset)
 			db.writeRecord(other)
@@ -197,7 +215,9 @@ func (db *HashDB) Get(key []byte) (value []byte, err error) {
 	return
 }
 
+
 // TODO(tux21b): Add a db.Delete() method
+// Why? Just delete the file!
 
 // Calculate the bucket ID for a given key. This ID is always between 0
 // and 2^nbuckets - 1 inclusive.

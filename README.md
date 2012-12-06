@@ -6,10 +6,6 @@ I had done this to
 - Archive this version and to
 - To add some improvements
 
-Known Bugs
-----------
-- No possibility to overwrite Keys
-
 
 An Example/Test
 ---------------
