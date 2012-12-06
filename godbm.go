@@ -2,6 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// Modified 2012 by maxymania. Unfortunately, the LICENSE file is lost.
+// The code is probably licensed with the 3-clause BSD-License.
+
 /*
 The godbm package provides a native DBM like database similar to Berkley DB,
 QDBM, Tokyo Cabinet or Kyoto Cabinet.
