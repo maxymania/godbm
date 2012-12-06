@@ -49,7 +49,7 @@ type record struct {
 }
 
 // Create a new hash database with 2^nbuckets available slots
-func Create(path string, nbuckets uint32) (db *HashDB, err os.Error) {
+func Create(path string, nbuckets uint32) (db *HashDB, err error) {
 	var file *os.File
 	// TODO(tux21b): Do not overwrite existing files.
 	if file, err = os.Create(path); err != nil {
@@ -75,7 +75,7 @@ func (db *HashDB) writeBuckets() {
 }
 
 // Store a (key, value) pair in the database
-func (db *HashDB) Set(key, value []byte) (err os.Error) {
+func (db *HashDB) Set(key, value []byte) (err error) {
 	// TODO(tux21b): Locks should only affect single records, not the file
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -120,7 +120,7 @@ func (db *HashDB) Set(key, value []byte) (err os.Error) {
 // Perform a binary search to find a specific record. If no matching
 // record was found, then rec is set to the parent record (useful for
 // inserting).
-func (db *HashDB) binSearch(key []byte, rec *record) (int, os.Error) {
+func (db *HashDB) binSearch(key []byte, rec *record) (int, error) {
 	if err := db.readRecord(rec); err != nil {
 		return 0, err
 	}
@@ -137,7 +137,7 @@ func (db *HashDB) binSearch(key []byte, rec *record) (int, os.Error) {
 }
 
 // Retrieve a (key, value) pair from the database
-func (db *HashDB) Get(key []byte) (value []byte, err os.Error) {
+func (db *HashDB) Get(key []byte) (value []byte, err error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 	offset := db.buckets[db.bucket(key)]
@@ -161,7 +161,7 @@ func (db *HashDB) bucket(key []byte) (bucket_id uint64) {
 	// TODO(tux21b): Consider using a faster, non-secure hash here (MurMur?)
 	hash := md5.New()
 	hash.Write(key)
-	sum := hash.Sum()
+	sum := hash.Sum([]byte{})
 	for i := uint(0); i < 8; i++ {
 		bucket_id |= uint64(sum[i] << (8 * i))
 	}
@@ -170,7 +170,7 @@ func (db *HashDB) bucket(key []byte) (bucket_id uint64) {
 }
 
 // Write a record to the file.
-func (db *HashDB) writeRecord(rec *record) (err os.Error) {
+func (db *HashDB) writeRecord(rec *record) (err error) {
 	buffer := bytes.NewBuffer(make([]byte, rec.size)[:0])
 	binary.Write(buffer, binary.BigEndian, uint32(rec.size))
 	binary.Write(buffer, binary.BigEndian, uint64(rec.left))
@@ -184,7 +184,7 @@ func (db *HashDB) writeRecord(rec *record) (err os.Error) {
 }
 
 // Read a record from the file
-func (db *HashDB) readRecord(rec *record) (err os.Error) {
+func (db *HashDB) readRecord(rec *record) (err error) {
 	header := make([]byte, 28)
 	if _, err = db.file.ReadAt(header, int64(rec.offset)); err != nil {
 		return
