@@ -103,7 +103,6 @@ func Read(path string) (db *HashDB, err error) {
 // Write the bucket array to the file
 func (db *HashDB) writeBuckets() {
 	// TODO(tux21b): Consider using mmap for the bucket array
-	// mmap(1) not existent in go!!!
 	db.file.Seek(0, 0)
 	binary.Write(db.file, binary.BigEndian, db.nbuckets)
 	binary.Write(db.file, binary.BigEndian, db.buckets)
@@ -122,7 +121,6 @@ func (db *HashDB) readBuckets() (err error){
 
 // Store a (key, value) pair in the database
 func (db *HashDB) Set(key, value []byte) (err error) {
-	// TODO(maxymania): Overwrite existing records
 	// TODO(tux21b): Locks should only affect single records, not the file
 	db.mu.Lock()
 	defer db.mu.Unlock()
@@ -218,6 +216,8 @@ func (db *HashDB) Get(key []byte) (value []byte, err error) {
 	return
 }
 
+// Close the db-File
+func (db *HashDB) Close() error { return db.file.Close() }
 
 // TODO(tux21b): Add a db.Delete() method
 // Why? Just delete the file!

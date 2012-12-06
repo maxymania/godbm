@@ -51,7 +51,7 @@ func read() {
 	fmt.Printf("Data: %s\n", data)
 }
 
-func append() {
+func appnd() { // append(..) is an build-in function, so don't use that name!
 	db, err := godbm.Open("test.db")
 	if err != nil {
 		fmt.Println("Error:", err)
@@ -93,7 +93,7 @@ func change() {
 
 func main() {
 	// write()
-	// append()
+	// appnd()
 	change()
 	// read()
 }
