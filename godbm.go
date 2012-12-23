@@ -46,6 +46,10 @@ type HashDB struct {
 	mu       sync.RWMutex
 }
 
+type KeyValuePair struct{
+	Key, Value  []byte // key and value
+}
+
 type record struct {
 	offset      uint64 // absolute offset of this record
 	size        uint32 // size (in bytes), including padding
@@ -214,6 +218,32 @@ func (db *HashDB) Get(key []byte) (value []byte, err error) {
 	}
 	value = rec.value
 	return
+}
+
+// Iterate over all Key Value Pairs
+// 
+// isok is a pointer to a boolean, with wich the consumer can signalize
+// to not continue iterating. If isok is nil it is treated as always true.
+func (db *HashDB) Iterate(isok *bool, dest chan <- KeyValuePair) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	defer close(dest)
+	if isok==nil { isok=new(bool);*isok=true }
+	for _,v := range db.buckets {
+		if !*isok { return }
+		db.iterate2(isok,dest,v)
+	}
+}
+func (db *HashDB) iterate2(isok *bool, dest chan <- KeyValuePair, addr uint64) {
+	var rec record
+	if addr==0 { return }
+	rec.offset = addr
+	if !*isok { return }
+	if err := db.readRecord(&rec); err != nil { return }
+	db.iterate2(isok,dest,rec.left)
+	if !*isok { return }
+	dest <- KeyValuePair{rec.key, rec.value}
+	db.iterate2(isok,dest,rec.right)
 }
 
 // Close the db-File

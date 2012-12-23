@@ -1,0 +1,43 @@
+PACKAGE
+
+package godbm
+    import "godbm"
+
+
+TYPES
+
+type HashDB struct {
+    // contains filtered or unexported fields
+}
+    The HashDB provides a persistent hash table with the usual O(1)
+    characteristics.
+
+func Create(path string, nbuckets uint32) (db *HashDB, err error)
+    Create a new hash database with 2^nbuckets available slots
+
+func Open(path string) (db *HashDB, err error)
+    Opend a hash database
+
+func Read(path string) (db *HashDB, err error)
+    Opend a hash database (Readonly)
+
+func (db *HashDB) Close() error
+    Close the db-File
+
+func (db *HashDB) Get(key []byte) (value []byte, err error)
+    Retrieve a (key, value) pair from the database
+
+func (db *HashDB) Iterate(isok *bool, dest chan<- KeyValuePair)
+    Iterate over all Key Value Pairs
+
+    isok is a pointer to a boolean, with wich the consumer can signalize to
+    not continue iterating. If isok is nil it is treated as always true.
+
+func (db *HashDB) Set(key, value []byte) (err error)
+    Store a (key, value) pair in the database
+
+type KeyValuePair struct {
+    Key, Value []byte // key and value
+}
+
+
